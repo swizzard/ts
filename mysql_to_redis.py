@@ -46,6 +46,7 @@ class DBToRedis(object):
                     yield row
             except Exception as e:
                 print e
+                cur.close()
                 conn.close()
                 conn = self.get_conn()
                 cur = conn.cursor()
