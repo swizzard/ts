@@ -16,6 +16,12 @@ class DBToRedis(object):
         self.r.set("user_alias_counter", 0)
         self.r.set("tweet_alias_counter", 0)
         self.r.set("domain_counter", 0)
+        self.curr_table = None
+        self.curr_id = 0
+        self.tables = ("hashtag", "hashtag_to_tweet", "tag_word",
+                       "tag_word_to_hashtag", "tweet", "url",
+                       "url_to_tweet", "user", "user_to_tweet",
+                       "word", "word_to_tweet")
 
     @staticmethod
     def get_conn():
@@ -31,27 +37,17 @@ class DBToRedis(object):
         else:
             return conn
 
-    def row_gen(self, table):
+    def row_gen(self, table, _id):
+        self.curr_table = table
         conn = self.get_conn()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM {}".format(table))
-        id_idx = 0
-        while True:
-            try:
-                row = cur.fetchone()
-                if row is None:
-                    raise StopIteration
-                else:
-                    id_idx = row.get("id")
-                    yield row
-            except Exception as e:
-                print e
-                cur.close()
-                conn.close()
-                conn = self.get_conn()
-                cur = conn.cursor()
-                cur.execute("SELECT * FROM {} WHERE id >= %s".format(table), (id_idx,))
-                continue
+        cur.execute("SELECT * FROM {} WHERE id >= %s".format(table), (_id,))
+        row = cur.fetchone()
+        if row is None:
+            raise StopIteration
+        else:
+            self.curr_id = row.get('id')
+            yield row
 
     @staticmethod
     def gen_key(prefix, _id):
@@ -125,24 +121,7 @@ class DBToRedis(object):
 
         return dec
 
-    def parse_all(self):
-        for table in (
-                "hashtag", "hashtag_to_tweet", "tag_word", "tag_word_to_hashtag", "tweet", "url", "url_to_tweet", "user",
-                "user_to_tweet", "word", "word_to_tweet"):
-            parser_func = self.print_parse(self.__getattribute__("parse_{}".format(table)))
-            print table
-            for row in self.row_gen(table):
-                try:
-                    parser_func(row)
-                except StopIteration:
-                    break
-                except Exception as e:
-                    print e
-                    resp = raw_input("error! continue? ")
-                    if resp:
-                        continue
-
-
-if __name__ == "__main__":
-    dbtr = DBToRedis()
-    dbtr.parse_all()
+    def parse_all(self, table, start_idx=0):
+        parser_func = self.print_parse(self.__getattribute__("parse_{}".format(table)))
+        for row in self.row_gen(table, start_idx):
+            parser_func(row)
