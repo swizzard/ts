@@ -42,12 +42,13 @@ class DBToRedis(object):
         conn = self.get_conn()
         cur = conn.cursor()
         cur.execute("SELECT * FROM {} WHERE id >= %s".format(table), (_id,))
-        row = cur.fetchone()
-        if row is None:
-            raise StopIteration
+        rows = cur.fetchall()
+        num_rows = len(rows)
+        i = 0
+        if i < num_rows:
+            yield rows[i]
         else:
-            self.curr_id = row.get('id')
-            yield row
+            raise StopIteration
 
     @staticmethod
     def gen_key(prefix, _id):
@@ -121,7 +122,9 @@ class DBToRedis(object):
 
         return dec
 
-    def parse_all(self, table, start_idx=0):
+    def parse_all(self, table):
         parser_func = self.print_parse(self.__getattribute__("parse_{}".format(table)))
-        for row in self.row_gen(table, start_idx):
+        for row in self.row_gen(table, self.curr_id):
             parser_func(row)
+        else:
+            self.curr_id = 0
