@@ -47,9 +47,12 @@ class DBToRedis(object):
         i = 0
         while True:
             if i < num_rows:
+                row = rows[i]
+                self.curr_id = row.get('id')
                 yield rows[i]
                 i += 1
             else:
+                self.curr_id = 0
                 raise StopIteration
 
     @staticmethod
@@ -128,5 +131,4 @@ class DBToRedis(object):
         parser_func = self.print_parse(self.__getattribute__("parse_{}".format(table)))
         for row in self.row_gen(table, self.curr_id):
             parser_func(row)
-        else:
-            self.curr_id = 0
+
