@@ -45,10 +45,12 @@ class DBToRedis(object):
         rows = cur.fetchall()
         num_rows = len(rows)
         i = 0
-        if i < num_rows:
-            yield rows[i]
-        else:
-            raise StopIteration
+        while True:
+            if i < num_rows:
+                yield rows[i]
+                i += 1
+            else:
+                raise StopIteration
 
     @staticmethod
     def gen_key(prefix, _id):
